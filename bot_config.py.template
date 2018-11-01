@@ -1,0 +1,25 @@
+"""IMAP config file for the mail mirror bot."""
+from typing import Tuple
+import logging
+
+# IMAP configuration
+IMAP_SERVER = ""
+IMAP_USER = ""
+IMAP_PASSWORD = ""
+
+# Path to .zuliprc file
+ZULIPRC = ""
+# Stream in Zulip to mirror emails to
+ZULIP_STREAM = ""
+
+# If a footer candidate contains these lines, they are removed
+FOOTER_FILTER_KEYWORDS = [""]
+
+# Adjust to logging.DEBUG for debug output
+LOGLEVEL = logging.INFO
+
+# Remove IMAP mails after mirroring
+REMOVE_MIRRORED_MAILS = False
+
+# Prefixes to remove from mail subjects
+UNWANTED_SUBJECT_PREFIXES: Tuple[str, ...] = ("AW:", "Re:", "Fwd:", "WG:")
