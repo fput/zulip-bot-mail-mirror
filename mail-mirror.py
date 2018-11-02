@@ -62,7 +62,6 @@ def get_zulip_topics_by_stream(client: zulip.Client,
     # TODO: Error handling
     # Get the stream id for the zulip stream
     response = client.get_stream_id(stream)
-    print(response)
     stream_id = response["stream_id"]
     # Get topic for this stream id
     response = client.get_stream_topics(stream_id)
