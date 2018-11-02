@@ -287,7 +287,7 @@ def main() -> None:
     logging.getLogger("zulip").setLevel(logging.WARNING)
 
     try:
-        for message in get_imap_messages():
+        for message in get_imap_messages(bot_config.REMOVE_MIRRORED_MAILS):
             process_message(message)
     except KeyboardInterrupt:
         print("Exiting... (keyboard interrupt)")
