@@ -4,7 +4,7 @@ A bot that queries new mails from an IMAP server and mirrors them to a Zulip ser
 
 ## Setup
 
-Adjust the config file `bot_config.py`.
+Adjust the config file `bot_config.py` and insert a zulip config file `zuliprc`.
 
 ```bash
 python -m venv env
