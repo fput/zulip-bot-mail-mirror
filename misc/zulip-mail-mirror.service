@@ -1,15 +1,14 @@
 [Unit]
-Description=Zulip->Seafile File Mirror Bot
+Description=Mail->Zulip Mirror Bot
 After=syslog.target network.target
 
 [Service]
 Type=simple
 User=zulip-bot
-WorkingDirectory=/home/zulip-bot/bots/
-ExecStart=/home/zulip-bot/bots/env/bin/python bot.py
+WorkingDirectory=/home/zulip-bot/zulip-mail-bot
+ExecStart=/home/zulip-bot/zulip-mail-bot/env/bin/python mail-mirror.py
 Restart=on-abort
-EnvironmentFile=/home/zulip-bot/seafile.env
 
 [Install]
 WantedBy=multi-user.target
-Alias=zulip-seafile-mirror.service
+Alias=zulip-mail-mirror.service
