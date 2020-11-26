@@ -1,0 +1,13 @@
+[Unit]
+Description=Zulip mail mirror bot
+After=syslog.target network.target
+
+[Service]
+Type=simple
+User=zulip-botfather
+WorkingDirectory=/opt/zulip-bots/mail-mirror
+ExecStart=/opt/zulip-bots/mail-mirror/env/bin/python mail-mirror.py
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target

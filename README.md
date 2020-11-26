@@ -1,4 +1,4 @@
-# Mail -> Zulip Mirror Bot
+# Zulip mail mirror bot
 
 A bot that queries new mails from an IMAP server and mirrors them to a Zulip server.
 
@@ -13,9 +13,9 @@ pip install -r requirements.txt
 ./mail-mirror.py
 ```
 
-For continued usage you can use the systemd-service file in `misc/`.
+For continued usage you can use the systemd-service file in `systemd/`.
 
-Then place the unit in e.g. `/lib/systemd/system/` and run `systemctl start zulip-mail-mirror`. You can view the logs using `journalctl -f -u zulip-mail-mirror`.
+Then place the unit in e.g. `/etc/systemd/system/` and run `systemctl start zulip-bot-mail-mirror`. You can view the logs using `journalctl -f -u zulip-bot-mail-mirror`.
 
 ## Usage
 
