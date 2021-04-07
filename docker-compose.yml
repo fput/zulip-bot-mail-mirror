@@ -1,0 +1,10 @@
+version: 3.5
+
+services:
+        zulip-bot-mail-mirror:
+                image: zulip-bot-mail-mirror
+                restart: unless-stopped
+                volumes:
+                        - /home/istadmin/zulip-bot-mail-mirror/zuliprc:app/zuliprc
+                        - /home/istadmin/zulip-bot-mail-mirror/bot_config.py:app/bot_config.py
+
