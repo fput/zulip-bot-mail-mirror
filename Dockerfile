@@ -8,4 +8,6 @@ RUN pip3 install -r requirements.txt --no-cache-dir
 COPY mail-mirror.py .
 COPY bot_config.py.template bot_config.py
 
-CMD [ "./mail-mirror.py" ]
+COPY run.sh .
+
+CMD [ "/bin/sh", "run.sh" ]
