@@ -207,7 +207,7 @@ def filter_footers(text: str) -> str:
                 textparts.append("\n".join(textlines[last_split:i]))
             last_split = i
 
-    if last_split is 0:
+    if last_split == 0:
         return text
 
     if len(textparts) == 2:
