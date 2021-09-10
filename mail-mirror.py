@@ -289,12 +289,13 @@ def main() -> None:
 
     try:
         for message in get_imap_messages(bot_config.REMOVE_MIRRORED_MAILS):
-            process_message(message)
+            try:
+                process_message(message)
+            except EmailMirrorError as e:
+                logging.error("Error while processing incoming E-Mail: {}".format(
+                    str(e)))
     except KeyboardInterrupt:
         print("Exiting... (keyboard interrupt)")
-    except EmailMirrorError as e:
-        logging.error("Error while processing incoming E-Mail: {}".format(
-            str(e)))
 
     logging.info("Exited.")
 
