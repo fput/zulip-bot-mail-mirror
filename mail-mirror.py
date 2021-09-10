@@ -192,7 +192,8 @@ def extract_email_body(message: EmailMessage,
         h.emphasis_mark = "*"
         return h.handle(html_content)
 
-    raise EmailMirrorError("Unable to find E-Mail body: {}".format(message))
+    #raise EmailMirrorError("Unable to find E-Mail body: {}".format(message))
+    return ''
 
 
 def filter_footers(text: str) -> str:
