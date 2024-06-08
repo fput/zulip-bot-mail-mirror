@@ -108,8 +108,7 @@ def process_message(message: EmailMessage) -> None:
     # Format the message for Zulip
     # ----------------------------
     body = quote_each_line(body)
-    body = ":mail_sent: **Neue E-Mail von: *{}* **\n\n{}".format(
-        message["From"], body)
+    body = bot_config.ZULIP_MESSAGE_FORMAT.format(sender=message["From"], body=body)
 
     zulip_message = {
         "type": "stream",

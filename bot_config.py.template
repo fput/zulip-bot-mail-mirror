@@ -12,6 +12,9 @@ ZULIPRC = ""
 # Stream in Zulip to mirror emails to
 ZULIP_STREAM = ""
 
+# Formatting of the Zulip message for each mirrored mail
+ZULIP_MESSAGE_FORMAT = ":mail_sent: **New mail from: *{sender}* **\n\n{body}"
+
 # If a footer candidate contains these lines, they are removed
 FOOTER_FILTER_KEYWORDS = []
 
