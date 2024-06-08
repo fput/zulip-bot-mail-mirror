@@ -11,7 +11,7 @@ https://github.com/zulip/zulip (Apache License 2.0)
 TODO: AsyncIO and IDLE using https://github.com/bamthomas/aioimaplib
 
 :copyright: (c) 2018 by Florentin Putz.
-:license: EUPL 1.2
+:license: EUPL-1.2+
 """
 
 from typing import Optional, Generator, Tuple

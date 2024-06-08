@@ -20,3 +20,7 @@ Then place the unit in e.g. `/etc/systemd/system/` and run `systemctl start zuli
 ## Usage
 
 Add the bot to the streams where you want to mirror uploaded files. Then run it periodically to mirror all new mails.
+
+## License
+
+EUPL-1.2 or later
