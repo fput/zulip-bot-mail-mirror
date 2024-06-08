@@ -26,32 +26,36 @@ from imaplib import IMAP4_SSL
 import logging
 import re
 import html2text  # type: ignore
+import talon  # type: ignore
 import zulip  # type: ignore
 
 
 class EmailMirrorError(Exception):
+    """Custom exception for mail mirroring errors."""
     pass
 
 
 def remove_subject_prefixes(subject: str, prefixes: Tuple[str, ...]) -> str:
-    """Removes unwanted prefixes from the subject.
+    """Removes unwanted prefixes from the subject case insensitively.
 
-    Prefixes are removed case insensitively.
+    Args:
+        subject: The subject of the mail.
+        prefixes: A tuple of prefixes to remove.
+
+    Returns:
+        The subject with unwanted prefixes removed.
 
     Example:
     >>> remove_subject_prefixes("Re: Fwd: Test", ("Fwd:", "Re:"))
     "Test"
     """
     def remove_prefixes_once(text: str) -> str:
-        """Removes unwanted prefixes once each."""
         for prefix in prefixes:
-            if text.lower().startswith(prefix):
-                text = text[len(prefix):]
-                break
-        return text.lstrip()
+            if text.lower().startswith(prefix.lower()):
+                return text[len(prefix):].lstrip()
+        return text
 
-    while subject.lower().startswith(prefixes):
-        # Remove a prefix while the text starts with a prefix
+    while any(subject.lower().startswith(prefix.lower()) for prefix in prefixes):
         subject = remove_prefixes_once(subject)
 
     return subject
@@ -59,8 +63,15 @@ def remove_subject_prefixes(subject: str, prefixes: Tuple[str, ...]) -> str:
 
 def get_zulip_topics_by_stream(client: zulip.Client,
                                stream: str) -> Generator[str, None, None]:
-    """Yields all topic names in the given zulip stream."""
-    # TODO: Error handling
+    """Yields all topic names in the given Zulip stream.
+
+    Args:
+        client: The Zulip client instance.
+        stream: The name of the Zulip stream.
+
+    Yields:
+        The topic names in the stream.
+    """
     # Get the stream id for the zulip stream
     response = client.get_stream_id(stream)
     stream_id = response["stream_id"]
@@ -71,39 +82,33 @@ def get_zulip_topics_by_stream(client: zulip.Client,
 
 
 def process_message(message: EmailMessage) -> None:
-    """Sends an incoming E-Mail message to Zulip."""
-    subject = extract_email_subject(message)
+    """Mirrors an incoming mail to Zulip.
 
+    Args:
+        message: The mail to mirror.
+
+    Raises:
+        EmailMirrorError: If the message could not be sent to Zulip.
+    """
+    subject = extract_email_subject(message)
     client = zulip.Client(config_file=bot_config.ZULIPRC)
 
-    # Don't remove quotations by default
-    remove_quotations = False
 
     # Extract the mail's subject
     # --------------------------
-    if "[ist-info]" in subject:
-        # Remove all prefixes from subject
-        unwanted_prefixes = tuple([p.lower()
-                                   for p
-                                   in bot_config.UNWANTED_SUBJECT_PREFIXES])
-        subject = remove_subject_prefixes(subject, unwanted_prefixes)
-        subject = subject.strip()
+    # Remove all prefixes from subject
+    subject = remove_subject_prefixes(subject, bot_config.UNWANTED_SUBJECT_PREFIXES).strip()
 
-        # If this is a reply to an already mirrored message, skip all
-        # quotations
-        if subject in get_zulip_topics_by_stream(client,
-                                                 bot_config.ZULIP_STREAM):
-            remove_quotations = True
+    # Don't remove quotations by default.
+    # If this is a reply to an already mirrored message, skip all quotations
+    remove_quotations = subject in get_zulip_topics_by_stream(client, bot_config.ZULIP_STREAM)
 
     # Extract the mail's body
     # -----------------------
     body = extract_email_body(message, remove_quotations)
     # Remove null characters, since Zulip will reject
     body = body.replace("\x00", "")
-    body = filter_footers(body)
-    body = body.strip()
-    if not body:
-        body = '(No email body)'
+    body = filter_footers(body).strip() or '(No email body)'
 
     # Format the message for Zulip
     # ----------------------------
@@ -119,54 +124,54 @@ def process_message(message: EmailMessage) -> None:
 
     logging.debug("\n")
     logging.debug("\n")
-    logging.debug("Mirroring mail with subject: {}".format(subject))
-    logging.debug("... Body:\n {}".format(subject))
+    logging.debug(f"Mirroring mail with subject: {subject}")
+    logging.debug(f"... Body:\n {body}")
     logging.debug("\n")
     response = client.send_message(zulip_message)
-    # print(subject)
-    # print(body)
 
     if response["result"] != "success":
         raise EmailMirrorError("Failed to send message to Zulip."
-                               "{}: {}".format(
-                                   response["code"],
-                                   response["msg"]))
+                               f"{response['code']}: {response['msg']}")
     else:
         logging.info("Successfully mirrored mail with subject:"
-                     "{}".format(subject))
+                     f"{subject}")
         logging.debug("\n")
 
 
 def extract_email_subject(message: EmailMessage) -> str:
-    subject_header = str(message.get("Subject", "")).strip()
-    if subject_header == "":
-        subject_header = "(no topic)"
+    """Extracts the subject from a mail.
+
+    Args:
+        message: The mail message.
+
+    Returns:
+        The decoded and cleaned subject of the mail.
+    """
+    subject_header = str(message.get("Subject", "")).strip() or "(no topic)"
     encoded_subject, encoding = decode_header(subject_header)[0]
 
-    if encoding is None:
-        # encoded_subject has type str when encoding is None
-        topic = str(encoded_subject)
-    else:
-        try:
-            topic = encoded_subject.decode(encoding)
-        except (UnicodeDecodeError, LookupError):
-            topic = "(unreadable subject)"
+    try:
+        topic = encoded_subject.decode(encoding) if encoding else str(encoded_subject)
+    except (UnicodeDecodeError, LookupError):
+        topic = "(unreadable subject)"
 
     return topic.strip()
 
 
-talon_initialized = False
-
 
 def extract_email_body(message: EmailMessage,
                        remove_quotations: bool = False) -> str:
-    # TODO: Spagetthiecode
-    import talon  # type: ignore
-    global talon_initialized
-    if not talon_initialized:
-        talon.init()
-        talon_initialized = True
+    """Extracts the body from a mail.
 
+        Can handle both plaintext and HTML mails.
+
+    Args:
+        message: The mail message.
+        remove_quotations: Whether to remove quotations from the mail body.
+
+    Returns:
+        The cleaned and formatted mail body.
+    """
     plaintext_content = get_message_part_by_type(message, "text/plain")
     html_content = get_message_part_by_type(message, "text/html")
 
@@ -192,11 +197,19 @@ def extract_email_body(message: EmailMessage,
         h.emphasis_mark = "*"
         return h.handle(html_content)
 
-    #raise EmailMirrorError("Unable to find E-Mail body: {}".format(message))
+    #raise EmailMirrorError(f"Unable to find E-Mail body: {message}")
     return ''
 
 
 def filter_footers(text: str) -> str:
+    """Filters footers from the mail body.
+
+    Args:
+        text: The mail body text.
+
+    Returns:
+        The mail body without footers.
+    """
     # Split the text into sections separated by "--..." or "__..." lines
     sections = re.split(r'\n--.*\n|\n__.*\n', text)
 
@@ -213,17 +226,31 @@ def filter_footers(text: str) -> str:
 
 
 def quote_each_line(text: str) -> str:
-    lines = ["> {}".format(line) for line in text.splitlines()]
+    """Quotes each line of the given text.
+
+    Args:
+        text: The text to quote.
+
+    Returns:
+        The quoted text.
+    """
+    lines = [f"> {line}" for line in text.splitlines()]
     return "\n".join(lines)
 
 
 def get_imap_messages(
         delete_afterwards: bool = False
 ) -> Generator[EmailMessage, None, None]:
-    """Yields all new emails.
+    """Yields all new mails.
 
     Based on:
     https://github.com/zulip/zulip/blob/a2a695dfa7a3fbd9d406dcce9c6299e41c6a445d/zerver/management/commands/email_mirror.py
+
+    Args:
+        delete_afterwards: Whether to delete the mails after processing.
+
+    Yields:
+        The new mails.
     """
     mb = IMAP4_SSL(bot_config.IMAP_SERVER)
     mb.login(bot_config.IMAP_USER, bot_config.IMAP_PASSWORD)
@@ -248,6 +275,15 @@ def get_imap_messages(
 
 def get_message_part_by_type(message: EmailMessage,
                              content_type: str) -> Optional[str]:
+    """Gets a specific part of the mail by content type.
+
+    Args:
+        message: The mail message.
+        content_type: The desired content type (e.g., "text/plain", "text/html").
+
+    Returns:
+        The content of the desired type, if found.
+    """
     # Source: Zulip's mail handling code
     charsets = message.get_charsets()
 
@@ -261,6 +297,7 @@ def get_message_part_by_type(message: EmailMessage,
 
 
 def main() -> None:
+    """Main function to process and mirror incoming mails to Zulip."""
     log_config = {
         "format": "%(asctime)s %(levelname)-8s %(message)s",
         "datefmt": "%d-%H:%M:%S"
@@ -269,13 +306,14 @@ def main() -> None:
     logging.basicConfig(**log_config)  # type: ignore
     logging.getLogger("zulip").setLevel(logging.WARNING)
 
+    talon.init()
+
     try:
         for message in get_imap_messages(bot_config.REMOVE_MIRRORED_MAILS):
             try:
                 process_message(message)
             except EmailMirrorError as e:
-                logging.error("Error while processing incoming E-Mail: {}".format(
-                    str(e)))
+                logging.error(f"Error while processing incoming E-Mail: {str(e)}")
     except KeyboardInterrupt:
         print("Exiting... (keyboard interrupt)")
 
