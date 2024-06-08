@@ -13,7 +13,7 @@ ZULIPRC = ""
 ZULIP_STREAM = ""
 
 # If a footer candidate contains these lines, they are removed
-FOOTER_FILTER_KEYWORDS = [""]
+FOOTER_FILTER_KEYWORDS = []
 
 # Adjust to logging.DEBUG for debug output
 LOGLEVEL = logging.INFO
