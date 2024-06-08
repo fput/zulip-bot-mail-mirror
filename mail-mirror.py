@@ -24,6 +24,7 @@ from email.message import EmailMessage
 from email.header import decode_header
 from imaplib import IMAP4_SSL
 import logging
+import re
 import html2text  # type: ignore
 import zulip  # type: ignore
 
@@ -70,7 +71,7 @@ def get_zulip_topics_by_stream(client: zulip.Client,
 
 
 def process_message(message: EmailMessage) -> None:
-    """Sends an incoming E-Mail Message to Zulip."""
+    """Sends an incoming E-Mail message to Zulip."""
     subject = extract_email_subject(message)
 
     client = zulip.Client(config_file=bot_config.ZULIPRC)
@@ -144,7 +145,7 @@ def extract_email_subject(message: EmailMessage) -> str:
     encoded_subject, encoding = decode_header(subject_header)[0]
 
     if encoding is None:
-        # encoded_subject has type str when# encoding is None
+        # encoded_subject has type str when encoding is None
         topic = str(encoded_subject)
     else:
         try:
@@ -197,37 +198,19 @@ def extract_email_body(message: EmailMessage,
 
 
 def filter_footers(text: str) -> str:
-    textlines = text.splitlines()
-    textlines.append("--")
-    textparts = list()
-    last_split = 0
-    # Split the text into textparts separated by "--..." lines
-    for i in range(len(textlines)):
-        if textlines[i].startswith("--") or textlines[i].startswith("__"):
-            if i > last_split:
-                textparts.append("\n".join(textlines[last_split:i]))
-            last_split = i
+    # Split the text into sections separated by "--..." or "__..." lines
+    sections = re.split(r'\n--.*\n|\n__.*\n', text)
 
-    if last_split == 0:
-        return text
+    if len(sections) in (1,2):
+        # Only body, or exactly one footer? -> just return the body
+        return sections[0].strip()
 
-    if len(textparts) == 2:
-        # Only one footer -> just return the body
-        return textparts[0].strip()
+    useful_sections = [
+        section for section in sections
+        if not any(keyword in section.splitlines() for keyword in bot_config.FOOTER_FILTER_KEYWORDS)
+    ]
 
-    useful_textparts = list()
-    for i in range(len(textparts)):
-        textpartlines = textparts[i].splitlines()
-        for keyword in bot_config.FOOTER_FILTER_KEYWORDS:
-            if keyword in textpartlines:
-                break
-        else:
-            # This executes if the current textpart does not contain any
-            # keyword. Therefore, we keep this textpart.
-            useful_textparts.append(textparts[i])
-
-    useful_text = "\n".join(useful_textparts)
-    return useful_text
+    return "\n".join(useful_sections).strip()
 
 
 def quote_each_line(text: str) -> str:
